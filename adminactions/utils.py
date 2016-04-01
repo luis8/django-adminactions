@@ -80,6 +80,14 @@ def getattr_or_item(obj, name):
     return ret
 
 
+def get_related_field(obj, field):
+
+
+    field = field.split('__')
+
+    return get_attr(get_attr(obj, field[0]), field[1])
+
+
 def get_field_value(obj, field, usedisplay=True, raw_callable=False):
     """
     returns the field value or field representation if get_FIELD_display exists
@@ -104,6 +112,8 @@ def get_field_value(obj, field, usedisplay=True, raw_callable=False):
 
     if usedisplay and hasattr(obj, 'get_%s_display' % fieldname):
         value = getattr(obj, 'get_%s_display' % fieldname)()
+    elif fieldname.find('__') >= 0:
+        value = get_related_field(obj, fieldname)
     else:
         value = getattr_or_item(obj, fieldname)
 

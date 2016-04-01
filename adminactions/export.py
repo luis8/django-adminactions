@@ -50,7 +50,17 @@ def base_export(modeladmin, request, queryset, title, impl, name, template, form
         messages.error(request, str(e))
         return
 
-    cols = [(f.name, f.verbose_name) for f in queryset.model._meta.fields]
+    #cols = [(f.name, f.verbose_name) for f in queryset.model._meta.fields]
+
+    cols = []
+
+    queryset = queryset.select_related() #fetch related recods so we dont hit database more than once
+    for f in queryset.model._meta.fields:
+      if f.rel:
+        cols += [(f.name+'__'+f2.name, f.name+'__'+str(f2.verbose_name)) for f2 in f.rel.to._meta.fields]
+
+      cols.append((f.name, f.verbose_name))
+
     initial = {'_selected_action': request.POST.getlist(helpers.ACTION_CHECKBOX_NAME),
                'select_across': request.POST.get('select_across') == '1',
                'action': get_action(request),

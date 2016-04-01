@@ -155,6 +155,18 @@ def export_as_csv(queryset, fields=None, header=None,  # noqa
                             quoting=int(config['quoting']))
 
     if bool(header):
+        meta_headers = { f.name: force_text(f.verbose_name) for f in queryset.model._meta.fields }
+        header = []
+
+        for f in fields:
+            if meta_headers.get(f):
+                 header.append(meta_headers.get(f))
+            else:
+                rel = queryset.model._meta.get_field(f.split('__')[0]).rel.to
+                rel_verbose = rel._meta.get_field(f.split('__')[1]).verbose_name
+                rel_verbose = f.split('__')[0] + ' ' + force_text(rel_verbose)
+                header.append(rel_verbose)
+                
         if isinstance(header, (list, tuple)):
             writer.writerow(header)
         else:
@@ -257,7 +269,18 @@ def export_as_xls2(queryset, fields=None, header=None,  # noqa
     sheet.write(row, 0, u'#', style)
     if header:
         if not isinstance(header, (list, tuple)):
-            header = [force_text(f.verbose_name) for f in queryset.model._meta.fields if f.name in fields]
+            meta_headers = { f.name: force_text(f.verbose_name) for f in queryset.model._meta.fields }
+
+            header = []
+            for f in fields:
+                if meta_headers.get(f):
+                    header.append(meta_headers.get(f))
+                else:
+                    rel = queryset.model._meta.get_field(f.split('__')[0]).rel.to
+                    rel_verbose = rel._meta.get_field(f.split('__')[1]).verbose_name
+                    rel_verbose = f.split('__')[0] + ' ' + force_text(rel_verbose)
+                    header.append(rel_verbose)
+
 
         for col, fieldname in enumerate(header, start=1):
             sheet.write(row, col, fieldname, heading_xf)
