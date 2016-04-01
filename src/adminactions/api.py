@@ -77,8 +77,7 @@ def merge(master, other, fields=None, commit=False, m2m=None, related=None):  # 
 
     if related == ALL_FIELDS:
         related = [rel.get_accessor_name()
-                   for rel in compat.get_all_related_objects(master)]
-# for rel in master._meta.get_all_related_objects(False, False, False)]
+                   for rel in master._meta.get_all_related_objects(False, False, False)]
 
     if m2m == ALL_FIELDS:
         m2m = [field.name for field in master._meta.many_to_many]
@@ -199,7 +198,7 @@ def export_as_csv(queryset, fields=None, header=None,  # noqa
 
     settingstime_zone = pytz.timezone(settings.TIME_ZONE)
 
-    def yield_header():
+    def yield_header():   
         if bool(header):
             if isinstance(header, (list, tuple)):
                 yield writer.writerow(header)
@@ -224,6 +223,18 @@ def export_as_csv(queryset, fields=None, header=None,  # noqa
                     value = dateformat.format(value, config['time_format'])
                 row.append(smart_str(value))
             yield writer.writerow(row)
+
+    meta_headers = { f.name: force_text(f.verbose_name) for f in queryset.model._meta.fields }
+    header = []
+
+    for f in fields:
+         if meta_headers.get(f):
+             header.append(meta_headers.get(f))
+         else:
+             rel = queryset.model._meta.get_field(f.split('__')[0]).rel.to
+             rel_verbose = rel._meta.get_field(f.split('__')[1]).verbose_name
+             rel_verbose = f.split('__')[0] + ' ' + force_text(rel_verbose)
+             header.append(rel_verbose)
 
     if streaming_enabled:
         content_attr = 'content' if (
@@ -277,7 +288,7 @@ def export_as_xls2(queryset, fields=None, header=None,  # noqa
         if hasattr(queryset, 'model'):
             for i, fieldname in enumerate(fields):
                 try:
-                    f, __, __, __, = compat.get_field_by_name(queryset.model, fieldname)
+                    f, __, __, __, = queryset.model._meta.get_field_by_name(fieldname)
                     fmt = xls_options_default.get(f.name, xls_options_default.get(f.__class__.__name__, 'general'))
                     formats[i] = fmt
                 except FieldDoesNotExist:
@@ -313,7 +324,19 @@ def export_as_xls2(queryset, fields=None, header=None,  # noqa
     sheet.write(row, 0, u'#', style)
     if header:
         if not isinstance(header, (list, tuple)):
-            header = [force_text(f.verbose_name) for f in queryset.model._meta.fields if f.name in fields]
+            #header = [force_text(f.verbose_name) for f in queryset.model._meta.fields if f.name in fields]
+
+            meta_headers = { f.name: force_text(f.verbose_name) for f in queryset.model._meta.fields }
+
+            header = []
+            for f in fields:
+                if meta_headers.get(f):
+                    header.append(meta_headers.get(f))
+                else:
+                    rel = queryset.model._meta.get_field(f.split('__')[0]).rel.to
+                    rel_verbose = rel._meta.get_field(f.split('__')[1]).verbose_name
+                    rel_verbose = f.split('__')[0] + ' ' + force_text(rel_verbose)
+                    header.append(rel_verbose)
 
         for col, fieldname in enumerate(header, start=1):
             sheet.write(row, col, fieldname, heading_xf)
